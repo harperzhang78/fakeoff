@@ -7,6 +7,7 @@ import android.app.NotificationManager;
 import android.app.NotificationManager.Policy;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -38,6 +39,7 @@ public final class MainActivity extends Activity {
     private boolean changedInterruptionFilter;
     private boolean changedNotificationPolicy;
     private boolean fakeOff;
+    private boolean lockTaskRequested;
     private TextView dndStatus;
     private TextView powerGestureStatus;
 
@@ -97,7 +99,9 @@ public final class MainActivity extends Activity {
     }
 
     private void showHome() {
+        stopAppPinning();
         fakeOff = false;
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         setShowOverLockScreen(false);
         restoreSoundPolicy();
         restorePowerGesture();
@@ -180,6 +184,9 @@ public final class MainActivity extends Activity {
 
     private void enterFakeOff() {
         fakeOff = true;
+        // An explicit app orientation prevents Android from offering its rotation
+        // suggestion button while the device is in turn-off mode.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setShowOverLockScreen(true);
         unlockSequence.reset();
         disablePowerGesture();
@@ -210,6 +217,37 @@ public final class MainActivity extends Activity {
         attributes.screenBrightness = 0.0f;
         getWindow().setAttributes(attributes);
         applyImmersiveMode();
+        startAppPinning();
+    }
+
+    private void startAppPinning() {
+        // Device-owner installations enter full lock task mode. Ordinary installs
+        // use Android's user-confirmed screen pinning, which also blocks the shade
+        // while it is active. Android intentionally keeps an escape gesture.
+        try {
+            startLockTask();
+            lockTaskRequested = true;
+        } catch (IllegalArgumentException | SecurityException ignored) {
+            lockTaskRequested = false;
+        }
+    }
+
+    private void stopAppPinning() {
+        if (!lockTaskRequested) {
+            return;
+        }
+        ActivityManager activityManager =
+                (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager != null
+                && activityManager.getLockTaskModeState()
+                != ActivityManager.LOCK_TASK_MODE_NONE) {
+            try {
+                stopLockTask();
+            } catch (IllegalArgumentException | SecurityException ignored) {
+                // The system may already have ended pinning with its escape gesture.
+            }
+        }
+        lockTaskRequested = false;
     }
 
     private void setShowOverLockScreen(boolean enabled) {
@@ -256,6 +294,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        stopAppPinning();
         restoreSoundPolicy();
         restorePowerGesture();
         super.onDestroy();
