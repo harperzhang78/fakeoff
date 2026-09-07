@@ -1,6 +1,7 @@
 package com.example.fakeoff;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
@@ -48,6 +49,7 @@ public final class MainActivity extends Activity {
 
     private void showHome() {
         fakeOff = false;
+        setShowOverLockScreen(false);
         restoreSoundPolicy();
         unlockSequence.reset();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -83,9 +85,15 @@ public final class MainActivity extends Activity {
         grantDnd.setOnClickListener(view -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
         content.addView(grantDnd, matchWrap());
 
+        Button displaySettings = new Button(this);
+        displaySettings.setText(R.string.open_display_settings);
+        displaySettings.setOnClickListener(view ->
+                startActivity(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
+        content.addView(displaySettings, matchWrap());
+
         Button activate = new Button(this);
         activate.setText(R.string.activate);
-        activate.setOnClickListener(view -> enterFakeOff());
+        activate.setOnClickListener(view -> confirmAndEnterFakeOff());
         LinearLayout.LayoutParams activateParams = matchWrap();
         activateParams.topMargin = dp(16);
         content.addView(activate, activateParams);
@@ -94,8 +102,18 @@ public final class MainActivity extends Activity {
         updateDndStatus();
     }
 
+    private void confirmAndEnterFakeOff() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.power_button_warning_title)
+                .setMessage(R.string.activation_warning_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.continue_action, (dialog, which) -> enterFakeOff())
+                .show();
+    }
+
     private void enterFakeOff() {
         fakeOff = true;
+        setShowOverLockScreen(true);
         unlockSequence.reset();
         if (notificationManager.isNotificationPolicyAccessGranted()) {
             previousInterruptionFilter = notificationManager.getCurrentInterruptionFilter();
@@ -122,16 +140,36 @@ public final class MainActivity extends Activity {
         applyImmersiveMode();
     }
 
+    private void setShowOverLockScreen(boolean enabled) {
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(enabled);
+            // Never wake the phone: only cover the lock screen after the user wakes it.
+            setTurnScreenOn(false);
+            return;
+        }
+
+        if (enabled) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (!fakeOff) {
             return super.dispatchKeyEvent(event);
         }
-        if (event.getAction() == KeyEvent.ACTION_DOWN
-                && event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN
-                && event.getRepeatCount() == 0
-                && unlockSequence.volumeDown(SystemClock.elapsedRealtime())) {
-            showHome();
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            long now = SystemClock.elapsedRealtime();
+            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN
+                    && event.getRepeatCount() == 0) {
+                if (unlockSequence.volumeDown(now)) {
+                    showHome();
+                }
+            } else {
+                unlockSequence.otherInput(now);
+            }
         }
         // Consume all keys delivered to the activity, including volume and Back.
         return true;

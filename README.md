@@ -1,12 +1,13 @@
-# Fake Off
+# Turn Off
 
-Fake Off is a small Android app that presents a black, minimum-brightness,
+Turn Off is a small Android app that presents a black, minimum-brightness,
 immersive screen and consumes touches and key events delivered to its activity.
 It can optionally enable Android's **Do Not Disturb** mode while active. To exit,
 tap the black screen three times and then press **Volume Down** three times, all
-within ten seconds. Input is evaluated in a moving ten-second window: unrelated
-inputs are ignored, and any valid tap-tap-tap-volume-volume-volume subsequence
-unlocks the app.
+within ten seconds. Input is evaluated in a moving ten-second window. The six
+operations must be continuous and in that exact order; an extra tap or another
+key event between them prevents that candidate sequence from unlocking. Older
+unrelated input can slide out as a new continuous sequence is entered.
 
 ## Build
 
@@ -17,7 +18,7 @@ gradle :app:assembleDebug
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
 The **Build APK** GitHub Actions workflow also builds and tests every pull
-request. Its `FakeOff-debug-apk` artifact can be downloaded from the workflow
+request. Its `TurnOff-debug-apk` artifact can be downloaded from the workflow
 run without installing the Android toolchain locally.
 
 ## Android safety limitations
@@ -25,15 +26,67 @@ run without installing the Android toolchain locally.
 This is a visual simulation, not a real powered-off state:
 
 - Android does not allow an ordinary app to intercept or disable the power
-  button. Long-press power and emergency controls remain available.
+  button. A short press can lock or wake the physical display, and a long press
+  can open the system power or emergency UI. The app receives neither press as
+  a normal `KeyEvent`, so `dispatchKeyEvent` cannot consume it. Turn Off now
+  displays this limitation in a confirmation dialog before activation rather
+  than implying that every hardware button can be blocked.
 - System gestures, notification shade access, OEM overlays, and incoming system
   UI may remain available. Immersive mode only hides system bars temporarily.
 - The display remains on at minimum brightness so the app can detect the unlock
   taps. Turning the physical display off would make those taps unavailable.
 - Do Not Disturb requires the user to explicitly grant Notification Policy
   access. Without it, the app cannot silence notifications from other apps.
-- The app restores the previous interruption filter when fake-off mode ends or
+- The app restores the previous interruption filter when turn-off mode ends or
   the activity is destroyed.
 
-These restrictions are intentional Android platform safeguards; bypassing them
-would require device-owner/kiosk privileges or a modified operating system.
+These restrictions are intentional Android platform safeguards. A managed,
+device-owner kiosk can restrict some global actions, but provisioning that mode
+factory-resets or administratively enrolls the device and still is not a
+general-purpose way for an app to intercept power. Fully changing power-key
+behavior requires a customized operating system.
+
+### Why an AccessibilityService is not used on Pixel
+
+An accessibility service can request key-event filtering, but that does not
+make it a system input-policy component. Android's system policy handles the
+Power key and does not deliver it through the accessibility key-filter callback.
+Returning `true` from either `AccessibilityService.onKeyEvent` or the activity's
+`dispatchKeyEvent` therefore cannot consume Power on a Pixel 10. Adding an
+accessibility service would ask the user for a powerful, privacy-sensitive
+permission without providing the requested behavior, so Turn Off deliberately
+does not request that permission.
+
+The supported behavior is to keep Turn Off active across ordinary activity
+resumes and consume keys Android actually delivers to it, including the Volume
+Down presses used by the exit sequence. Blocking the physical Power key is not
+a supported behavior for a normal Play-installable application on Pixel.
+
+### Pixel Always-on display
+
+While Turn Off is in the foreground, it keeps the display awake and draws a
+minimum-brightness black window. Because the device has not entered its ambient
+sleep state, Pixel's Always-on display should not be shown during normal
+turn-off use.
+
+If Power is pressed, Android can still put the display to sleep and then show
+the system-owned Always-on display. Its setting is protected; an ordinary app
+cannot silently change it. Turn Off therefore provides an **Open display
+settings for Always-on display** button so the user can disable the feature in
+Pixel Settings before activation. The exact setting name and location can vary
+with the installed Pixel/Android release.
+
+### Black lock screen
+
+While turn-off mode is active, its black activity is allowed to appear above
+the keyguard. After the user wakes the screen, Android can therefore show the
+black turn-off window instead of exposing the lock-screen wallpaper and
+notifications. The app does not request dismissal of the keyguard, does not
+turn the screen on by itself, and does not weaken the device PIN, pattern,
+password, or biometric security. Leaving turn-off mode removes this permission
+before returning to the app's controls.
+
+This behavior is best-effort. Android may still show trusted system surfaces,
+including Always-on display, emergency UI, the power menu, permission dialogs,
+and low-level boot screens. If Android kills the app process, its activity can
+no longer cover the keyguard.

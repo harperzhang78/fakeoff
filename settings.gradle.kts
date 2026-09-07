@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FakeOff"
+rootProject.name = "TurnOff"
 include(":app")

@@ -18,7 +18,7 @@ public class UnlockSequenceTest {
     }
 
     @Test
-    public void ignoresVolumePressesThatDoNotBelongToValidSubsequence() {
+    public void volumePressInMiddlePreventsUnlock() {
         UnlockSequence sequence = new UnlockSequence(10_000);
         sequence.tap(100);
         assertFalse(sequence.volumeDown(150));
@@ -26,7 +26,7 @@ public class UnlockSequenceTest {
         sequence.tap(300);
         assertFalse(sequence.volumeDown(400));
         assertFalse(sequence.volumeDown(500));
-        assertTrue(sequence.volumeDown(600));
+        assertFalse(sequence.volumeDown(600));
     }
 
     @Test
@@ -39,7 +39,7 @@ public class UnlockSequenceTest {
     }
 
     @Test
-    public void ignoresExtraTapsWhileFindingSubsequence() {
+    public void extraTapInMiddlePreventsUnlock() {
         UnlockSequence sequence = new UnlockSequence(10_000);
         sequence.tap(0);
         sequence.tap(1);
@@ -47,7 +47,7 @@ public class UnlockSequenceTest {
         assertFalse(sequence.volumeDown(3));
         sequence.tap(4);
         assertFalse(sequence.volumeDown(5));
-        assertTrue(sequence.volumeDown(6));
+        assertFalse(sequence.volumeDown(6));
     }
 
     @Test
@@ -60,5 +60,29 @@ public class UnlockSequenceTest {
         assertFalse(sequence.volumeDown(11_000));
         assertFalse(sequence.volumeDown(11_500));
         assertTrue(sequence.volumeDown(12_000));
+    }
+
+    @Test
+    public void unrelatedInputBeforeContinuousPatternSlidesOut() {
+        UnlockSequence sequence = new UnlockSequence(10_000);
+        assertFalse(sequence.volumeDown(0));
+        sequence.tap(1);
+        sequence.tap(2);
+        sequence.tap(3);
+        assertFalse(sequence.volumeDown(4));
+        assertFalse(sequence.volumeDown(5));
+        assertTrue(sequence.volumeDown(6));
+    }
+
+    @Test
+    public void otherKeyInMiddlePreventsUnlock() {
+        UnlockSequence sequence = new UnlockSequence(10_000);
+        sequence.tap(0);
+        sequence.tap(1);
+        sequence.tap(2);
+        sequence.otherInput(3);
+        assertFalse(sequence.volumeDown(4));
+        assertFalse(sequence.volumeDown(5));
+        assertFalse(sequence.volumeDown(6));
     }
 }

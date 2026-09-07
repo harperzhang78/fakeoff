@@ -3,11 +3,12 @@ package com.example.fakeoff;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/** Finds three taps followed by three volume-down presses in a moving time window. */
+/** Finds six continuous matching inputs inside a moving time window. */
 final class UnlockSequence {
     private enum Input {
         TAP,
-        VOLUME_DOWN
+        VOLUME_DOWN,
+        OTHER
     }
 
     private static final Input[] PATTERN = {
@@ -42,11 +43,15 @@ final class UnlockSequence {
 
     boolean volumeDown(long now) {
         record(Input.VOLUME_DOWN, now);
-        if (containsPattern()) {
+        if (matchesPattern()) {
             reset();
             return true;
         }
         return false;
+    }
+
+    void otherInput(long now) {
+        record(Input.OTHER, now);
     }
 
     void reset() {
@@ -58,18 +63,23 @@ final class UnlockSequence {
         while (!inputs.isEmpty() && now - inputs.peekFirst().timestamp > timeoutMillis) {
             inputs.removeFirst();
         }
+        while (inputs.size() > PATTERN.length) {
+            inputs.removeFirst();
+        }
     }
 
-    private boolean containsPattern() {
+    private boolean matchesPattern() {
+        if (inputs.size() != PATTERN.length) {
+            return false;
+        }
+
         int patternIndex = 0;
         for (TimedInput timedInput : inputs) {
-            if (timedInput.input == PATTERN[patternIndex]) {
-                patternIndex++;
-                if (patternIndex == PATTERN.length) {
-                    return true;
-                }
+            if (timedInput.input != PATTERN[patternIndex]) {
+                return false;
             }
+            patternIndex++;
         }
-        return false;
+        return true;
     }
 }
