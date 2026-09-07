@@ -346,23 +346,6 @@ public final class MainActivity extends Activity {
                     | Policy.SUPPRESSED_EFFECT_SCREEN_ON;
         }
         int suppressedVisualEffects = currentPolicy.suppressedVisualEffects | hiddenEffects;
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            return new Policy(
-                    currentPolicy.priorityCategories,
-                    currentPolicy.priorityCallSenders,
-                    currentPolicy.priorityMessageSenders,
-                    suppressedVisualEffects,
-                    currentPolicy.state,
-                    currentPolicy.priorityConversationSenders);
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 28) {
-            return new Policy(
-                    currentPolicy.priorityCategories,
-                    currentPolicy.priorityCallSenders,
-                    currentPolicy.priorityMessageSenders,
-                    suppressedVisualEffects,
-                    currentPolicy.state);
-        }
         return new Policy(
                 currentPolicy.priorityCategories,
                 currentPolicy.priorityCallSenders,
