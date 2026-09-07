@@ -8,11 +8,16 @@
     <string name="dnd_status_off">Do Not Disturb access: not allowed (notifications cannot be hidden)</string>
     <string name="grant_dnd">Allow notification hiding</string>
     <string name="open_display_settings">Open display settings for Always-on display</string>
+    <string name="open_emergency_alert_settings">Review wireless emergency alerts</string>
     <string name="power_gesture_status_on">Double-press Power control: available (will be disabled while off)</string>
     <string name="power_gesture_status_off">Double-press Power control: unavailable; set it to None manually, or grant secure-settings access with adb</string>
     <string name="open_gesture_settings">Open system gesture settings</string>
     <string name="activate">Activate turn-off mode</string>
-    <string name="power_button_warning_title">The power button cannot be blocked</string>
-    <string name="activation_warning_message">On Pixel phones, Android handles Power before app and accessibility-service key callbacks. Accessibility cannot intercept Power. Android may ask you to confirm screen pinning; accept it to keep Turn Off in front and block the notification shade. Screen pinning still has a system escape gesture. Notification Policy access is required to hide chat, news, and other app notifications while off. If secure-settings access was granted with adb, Turn Off will temporarily set the double-press Power gesture to None and restore it on exit. Otherwise, set that gesture to None manually. Always-on display is system-owned; disable it manually in Pixel display settings.</string>
-    <string name="continue_action">Continue</string>
+    <string name="activation_warning_title">Review before activation</string>
+    <string name="activation_warning_dnd_missing">Required access missing: Notification Policy access has not been granted. Turn Off cannot silence or hide ordinary notifications.</string>
+    <string name="activation_warning_secure_settings_missing">Optional access missing: secure-settings access has not been granted. Turn Off cannot disable the double-press Power camera gesture automatically.</string>
+    <string name="activation_warning_emergency_alerts">Emergency-alert status cannot be read by ordinary apps. AMBER, extreme-threat, test, and other wireless emergency alerts may sound or appear above Turn Off. Review Android’s wireless emergency alert settings before continuing.</string>
+    <string name="activation_warning_system_limits">Android may also show other trusted system UI. The Power button, emergency UI, screen-pinning escape gesture, and Always-on display cannot be blocked by this app.</string>
+    <string name="review_emergency_alerts">Review emergency alerts</string>
+    <string name="continue_anyway">Continue anyway</string>
 </resources>
