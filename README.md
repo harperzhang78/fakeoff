@@ -36,9 +36,13 @@ This is a visual simulation, not a real powered-off state:
 - The display remains on at minimum brightness so the app can detect the unlock
   taps. Turning the physical display off would make those taps unavailable.
 - Do Not Disturb requires the user to explicitly grant Notification Policy
-  access. Without it, the app cannot silence notifications from other apps.
+  access. While turn-off mode is active, the app uses that access to silence
+  notifications from other apps and suppress their visual effects, including
+  heads-up banners, status-bar icons, badges, ambient notifications, and the
+  notification list. Without access, it cannot hide or silence notifications.
 - The app restores the previous interruption filter when turn-off mode ends or
-  the activity is destroyed.
+  the activity is destroyed. It also restores the previous notification visual
+  effects policy.
 
 These restrictions are intentional Android platform safeguards. A managed,
 device-owner kiosk can restrict some global actions, but provisioning that mode

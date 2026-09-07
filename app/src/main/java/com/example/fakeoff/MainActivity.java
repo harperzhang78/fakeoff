@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
+import android.app.NotificationManager.Policy;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -33,7 +34,9 @@ public final class MainActivity extends Activity {
     private final UnlockSequence unlockSequence = new UnlockSequence(UNLOCK_TIMEOUT_MILLIS);
     private NotificationManager notificationManager;
     private int previousInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
+    private Policy previousNotificationPolicy;
     private boolean changedInterruptionFilter;
+    private boolean changedNotificationPolicy;
     private boolean fakeOff;
     private TextView dndStatus;
     private TextView powerGestureStatus;
@@ -182,6 +185,10 @@ public final class MainActivity extends Activity {
         disablePowerGesture();
         if (notificationManager.isNotificationPolicyAccessGranted()) {
             previousInterruptionFilter = notificationManager.getCurrentInterruptionFilter();
+            previousNotificationPolicy = notificationManager.getNotificationPolicy();
+            notificationManager.setNotificationPolicy(hiddenNotificationPolicy(
+                    previousNotificationPolicy));
+            changedNotificationPolicy = true;
             notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
             changedInterruptionFilter = true;
         }
@@ -308,12 +315,59 @@ public final class MainActivity extends Activity {
     }
 
     private void restoreSoundPolicy() {
+        if (changedNotificationPolicy
+                && notificationManager != null
+                && notificationManager.isNotificationPolicyAccessGranted()
+                && previousNotificationPolicy != null) {
+            notificationManager.setNotificationPolicy(previousNotificationPolicy);
+            changedNotificationPolicy = false;
+            previousNotificationPolicy = null;
+        }
         if (changedInterruptionFilter
                 && notificationManager != null
                 && notificationManager.isNotificationPolicyAccessGranted()) {
             notificationManager.setInterruptionFilter(previousInterruptionFilter);
             changedInterruptionFilter = false;
         }
+    }
+
+    private Policy hiddenNotificationPolicy(Policy currentPolicy) {
+        int hiddenEffects;
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            hiddenEffects = Policy.SUPPRESSED_EFFECT_FULL_SCREEN_INTENT
+                    | Policy.SUPPRESSED_EFFECT_LIGHTS
+                    | Policy.SUPPRESSED_EFFECT_PEEK
+                    | Policy.SUPPRESSED_EFFECT_STATUS_BAR
+                    | Policy.SUPPRESSED_EFFECT_BADGE
+                    | Policy.SUPPRESSED_EFFECT_AMBIENT
+                    | Policy.SUPPRESSED_EFFECT_NOTIFICATION_LIST;
+        } else {
+            hiddenEffects = Policy.SUPPRESSED_EFFECT_SCREEN_OFF
+                    | Policy.SUPPRESSED_EFFECT_SCREEN_ON;
+        }
+        int suppressedVisualEffects = currentPolicy.suppressedVisualEffects | hiddenEffects;
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            return new Policy(
+                    currentPolicy.priorityCategories,
+                    currentPolicy.priorityCallSenders,
+                    currentPolicy.priorityMessageSenders,
+                    suppressedVisualEffects,
+                    currentPolicy.state,
+                    currentPolicy.priorityConversationSenders);
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            return new Policy(
+                    currentPolicy.priorityCategories,
+                    currentPolicy.priorityCallSenders,
+                    currentPolicy.priorityMessageSenders,
+                    suppressedVisualEffects,
+                    currentPolicy.state);
+        }
+        return new Policy(
+                currentPolicy.priorityCategories,
+                currentPolicy.priorityCallSenders,
+                currentPolicy.priorityMessageSenders,
+                suppressedVisualEffects);
     }
 
     private void applyImmersiveMode() {
