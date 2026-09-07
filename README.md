@@ -52,10 +52,9 @@ This is a visual simulation, not a real powered-off state:
 - The app restores the previous interruption filter when turn-off mode ends or
   the activity is destroyed. It also restores the previous notification visual
   effects policy.
-- Before activation, Turn Off reports only permissions that are missing. It
-  does not warn merely because an ordinary app cannot inspect wireless
-  emergency-alert preferences. The home screen still provides a shortcut for
-  reviewing those preferences in Android Settings.
+- Activation starts immediately. The home screen reports optional access that
+  is missing and provides shortcuts for reviewing notification, display,
+  gesture, and wireless emergency-alert settings before activation.
 
 These restrictions are intentional Android platform safeguards. A managed,
 device-owner kiosk can restrict some global actions, but provisioning that mode
