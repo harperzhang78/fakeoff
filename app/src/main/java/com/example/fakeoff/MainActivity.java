@@ -45,11 +45,17 @@ public final class MainActivity extends Activity {
     private boolean lockTaskRequested;
     private TextView dndStatus;
     private TextView powerGestureStatus;
+    private final Runnable restoreImmersiveMode = () -> {
+        if (fakeOff && !isFinishing() && !isDestroyed()) {
+            applyImmersiveMode();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        configureSystemBarAppearance();
         showHome();
     }
 
@@ -194,8 +200,12 @@ public final class MainActivity extends Activity {
             warning.append(getString(R.string.activation_warning_secure_settings_missing))
                     .append("\n\n");
         }
-        warning.append(getString(R.string.activation_warning_emergency_alerts));
-        warning.append("\n\n").append(getString(R.string.activation_warning_system_limits));
+        if (warning.length() == 0) {
+            enterFakeOff();
+            return;
+        }
+
+        warning.setLength(warning.length() - 2);
 
         AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.activation_warning_title)
@@ -205,9 +215,6 @@ public final class MainActivity extends Activity {
         if (!notificationAccessGranted) {
             dialog.setNeutralButton(R.string.grant_dnd, (ignored, which) ->
                     startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
-        } else {
-            dialog.setNeutralButton(R.string.review_emergency_alerts, (ignored, which) ->
-                    openEmergencyAlertSettings());
         }
         dialog.show();
     }
@@ -447,6 +454,34 @@ public final class MainActivity extends Activity {
                             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                             | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
+    }
+
+    private void configureSystemBarAppearance() {
+        Window window = getWindow();
+        window.setNavigationBarColor(Color.BLACK);
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.setNavigationBarContrastEnforced(false);
+        }
+
+        View decorView = window.getDecorView();
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            decorView.setOnApplyWindowInsetsListener((view, insets) -> {
+                if (fakeOff && insets.isVisible(WindowInsets.Type.systemBars())) {
+                    // A bottom-edge swipe may briefly reveal Android's gesture handle.
+                    // Re-hide it as soon as the system finishes dispatching the insets.
+                    view.removeCallbacks(restoreImmersiveMode);
+                    view.post(restoreImmersiveMode);
+                }
+                return insets;
+            });
+        } else {
+            decorView.setOnSystemUiVisibilityChangeListener(visibility -> {
+                if (fakeOff) {
+                    decorView.removeCallbacks(restoreImmersiveMode);
+                    decorView.post(restoreImmersiveMode);
+                }
+            });
         }
     }
 
