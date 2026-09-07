@@ -52,12 +52,10 @@ This is a visual simulation, not a real powered-off state:
 - The app restores the previous interruption filter when turn-off mode ends or
   the activity is destroyed. It also restores the previous notification visual
   effects policy.
-- Before activation, Turn Off reports when Notification Policy access or the
-  optional secure-settings access is missing. It also warns that ordinary apps
-  cannot reliably inspect wireless emergency-alert preferences and provides a
-  shortcut to those settings. AMBER and other system-managed emergency alerts
-  may still sound or appear above the app, so their configuration must be
-  reviewed in Android Settings.
+- Before activation, Turn Off reports only permissions that are missing. It
+  does not warn merely because an ordinary app cannot inspect wireless
+  emergency-alert preferences. The home screen still provides a shortcut for
+  reviewing those preferences in Android Settings.
 
 These restrictions are intentional Android platform safeguards. A managed,
 device-owner kiosk can restrict some global actions, but provisioning that mode
