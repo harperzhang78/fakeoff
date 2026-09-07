@@ -103,6 +103,11 @@ turn the screen on by itself, and does not weaken the device PIN, pattern,
 password, or biometric security. Leaving turn-off mode removes this permission
 before returning to the app's controls.
 
+Turn Off also moves its existing task back to the foreground if another
+ordinary app takes focus while turn-off mode is active. This keeps the black
+screen above normal application windows without creating a draw-over-other-apps
+overlay or requesting broad overlay access.
+
 This behavior is best-effort. Android may still show trusted system surfaces,
 including Always-on display, emergency UI, the power menu, permission dialogs,
 and low-level boot screens. If Android kills the app process, its activity can

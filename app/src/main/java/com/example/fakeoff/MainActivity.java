@@ -1,6 +1,7 @@
 package com.example.fakeoff;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -51,6 +52,44 @@ public final class MainActivity extends Activity {
             applyImmersiveMode();
         } else {
             updateDndStatus();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        keepFakeOffInFront();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        keepFakeOffInFront();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus) {
+            keepFakeOffInFront();
+        } else if (fakeOff) {
+            applyImmersiveMode();
+        }
+    }
+
+    private void keepFakeOffInFront() {
+        if (!fakeOff || isFinishing() || isDestroyed()) {
+            return;
+        }
+        ActivityManager activityManager =
+                (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager != null) {
+            getWindow().getDecorView().postDelayed(() -> {
+                if (fakeOff && !isFinishing() && !isDestroyed()) {
+                    activityManager.moveTaskToFront(getTaskId(), 0);
+                    applyImmersiveMode();
+                }
+            }, 100);
         }
     }
 
@@ -110,9 +149,16 @@ public final class MainActivity extends Activity {
 
         Button activate = new Button(this);
         activate.setText(R.string.activate);
+        activate.setTextColor(Color.WHITE);
+        activate.setTextSize(20);
+        activate.setGravity(Gravity.CENTER);
+        activate.setBackgroundTintList(null);
+        activate.setBackgroundResource(R.drawable.activate_button_background);
+        activate.setElevation(dp(8));
         activate.setOnClickListener(view -> confirmAndEnterFakeOff());
-        LinearLayout.LayoutParams activateParams = matchWrap();
-        activateParams.topMargin = dp(16);
+        LinearLayout.LayoutParams activateParams =
+                new LinearLayout.LayoutParams(dp(200), dp(200));
+        activateParams.topMargin = dp(24);
         content.addView(activate, activateParams);
 
         setContentView(content);
