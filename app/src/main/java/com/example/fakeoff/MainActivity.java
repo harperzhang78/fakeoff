@@ -1,10 +1,12 @@
 package com.example.fakeoff;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -23,12 +25,18 @@ import android.widget.TextView;
 
 public final class MainActivity extends Activity {
     private static final long UNLOCK_TIMEOUT_MILLIS = 10_000;
+    private static final String WRITE_SECURE_SETTINGS = "android.permission.WRITE_SECURE_SETTINGS";
+    private static final String POWER_GESTURE_SETTING = "camera_double_tap_power_gesture_disabled";
+    private static final String PREFS = "turn_off_state";
+    private static final String PREF_POWER_GESTURE_SAVED = "power_gesture_saved";
+    private static final String PREF_POWER_GESTURE_PREVIOUS = "power_gesture_previous";
     private final UnlockSequence unlockSequence = new UnlockSequence(UNLOCK_TIMEOUT_MILLIS);
     private NotificationManager notificationManager;
     private int previousInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
     private boolean changedInterruptionFilter;
     private boolean fakeOff;
     private TextView dndStatus;
+    private TextView powerGestureStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,10 +55,49 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        keepFakeOffInFront();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        keepFakeOffInFront();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus) {
+            keepFakeOffInFront();
+        } else if (fakeOff) {
+            applyImmersiveMode();
+        }
+    }
+
+    private void keepFakeOffInFront() {
+        if (!fakeOff || isFinishing() || isDestroyed()) {
+            return;
+        }
+        ActivityManager activityManager =
+                (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager != null) {
+            getWindow().getDecorView().postDelayed(() -> {
+                if (fakeOff && !isFinishing() && !isDestroyed()) {
+                    activityManager.moveTaskToFront(getTaskId(), 0);
+                    applyImmersiveMode();
+                }
+            }, 100);
+        }
+    }
+
     private void showHome() {
         fakeOff = false;
         setShowOverLockScreen(false);
         restoreSoundPolicy();
+        restorePowerGesture();
         unlockSequence.reset();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         WindowManager.LayoutParams attributes = getWindow().getAttributes();
@@ -80,6 +127,10 @@ public final class MainActivity extends Activity {
         dndStatus = text("", 14);
         content.addView(dndStatus, matchWrap());
 
+        powerGestureStatus = text("", 14);
+        powerGestureStatus.setPadding(0, dp(8), 0, 0);
+        content.addView(powerGestureStatus, matchWrap());
+
         Button grantDnd = new Button(this);
         grantDnd.setText(R.string.grant_dnd);
         grantDnd.setOnClickListener(view -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
@@ -91,15 +142,28 @@ public final class MainActivity extends Activity {
                 startActivity(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
         content.addView(displaySettings, matchWrap());
 
+        Button gestureSettings = new Button(this);
+        gestureSettings.setText(R.string.open_gesture_settings);
+        gestureSettings.setOnClickListener(view -> openGestureSettings());
+        content.addView(gestureSettings, matchWrap());
+
         Button activate = new Button(this);
         activate.setText(R.string.activate);
+        activate.setTextColor(Color.WHITE);
+        activate.setTextSize(20);
+        activate.setGravity(Gravity.CENTER);
+        activate.setBackgroundTintList(null);
+        activate.setBackgroundResource(R.drawable.activate_button_background);
+        activate.setElevation(dp(8));
         activate.setOnClickListener(view -> confirmAndEnterFakeOff());
-        LinearLayout.LayoutParams activateParams = matchWrap();
-        activateParams.topMargin = dp(16);
+        LinearLayout.LayoutParams activateParams =
+                new LinearLayout.LayoutParams(dp(200), dp(200));
+        activateParams.topMargin = dp(24);
         content.addView(activate, activateParams);
 
         setContentView(content);
         updateDndStatus();
+        updatePowerGestureStatus();
     }
 
     private void confirmAndEnterFakeOff() {
@@ -115,6 +179,7 @@ public final class MainActivity extends Activity {
         fakeOff = true;
         setShowOverLockScreen(true);
         unlockSequence.reset();
+        disablePowerGesture();
         if (notificationManager.isNotificationPolicyAccessGranted()) {
             previousInterruptionFilter = notificationManager.getCurrentInterruptionFilter();
             notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
@@ -185,7 +250,61 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         restoreSoundPolicy();
+        restorePowerGesture();
         super.onDestroy();
+    }
+
+    private boolean canWriteSecureSettings() {
+        return checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void disablePowerGesture() {
+        if (!canWriteSecureSettings()) {
+            return;
+        }
+        try {
+            int previous = Settings.Secure.getInt(getContentResolver(), POWER_GESTURE_SETTING, 0);
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putInt(PREF_POWER_GESTURE_PREVIOUS, previous)
+                    .putBoolean(PREF_POWER_GESTURE_SAVED, true)
+                    .commit();
+            if (!Settings.Secure.putInt(getContentResolver(), POWER_GESTURE_SETTING, 1)) {
+                clearSavedPowerGesture();
+            }
+        } catch (SecurityException ignored) {
+            // The development permission may have been revoked since the check.
+            clearSavedPowerGesture();
+        }
+    }
+
+    private void restorePowerGesture() {
+        android.content.SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (!preferences.getBoolean(PREF_POWER_GESTURE_SAVED, false) || !canWriteSecureSettings()) {
+            return;
+        }
+        try {
+            int previous = preferences.getInt(PREF_POWER_GESTURE_PREVIOUS, 0);
+            if (Settings.Secure.putInt(getContentResolver(), POWER_GESTURE_SETTING, previous)) {
+                clearSavedPowerGesture();
+            }
+        } catch (SecurityException ignored) {
+            // Keep the saved value so a later launch can restore it after access returns.
+        }
+    }
+
+    private void clearSavedPowerGesture() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .remove(PREF_POWER_GESTURE_PREVIOUS)
+                .remove(PREF_POWER_GESTURE_SAVED)
+                .apply();
+    }
+
+    private void openGestureSettings() {
+        Intent gestureSettings = new Intent("android.settings.GESTURE_SETTINGS");
+        if (gestureSettings.resolveActivity(getPackageManager()) == null) {
+            gestureSettings = new Intent(Settings.ACTION_SETTINGS);
+        }
+        startActivity(gestureSettings);
     }
 
     private void restoreSoundPolicy() {
@@ -232,6 +351,13 @@ public final class MainActivity extends Activity {
         if (dndStatus != null) {
             dndStatus.setText(notificationManager.isNotificationPolicyAccessGranted()
                     ? R.string.dnd_status_on : R.string.dnd_status_off);
+        }
+    }
+
+    private void updatePowerGestureStatus() {
+        if (powerGestureStatus != null) {
+            powerGestureStatus.setText(canWriteSecureSettings()
+                    ? R.string.power_gesture_status_on : R.string.power_gesture_status_off);
         }
     }
 

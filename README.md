@@ -46,6 +46,23 @@ factory-resets or administratively enrolls the device and still is not a
 general-purpose way for an app to intercept power. Fully changing power-key
 behavior requires a customized operating system.
 
+### Pixel double-press Power gesture
+
+Turn Off can temporarily set Pixel's double-press Power camera gesture to
+**None** while turn-off mode is active and restore its prior value on exit. The
+setting is protected by Android, so this works only when secure-settings access
+has been granted from a computer for this installation:
+
+```bash
+adb shell pm grant com.example.fakeoff android.permission.WRITE_SECURE_SETTINGS
+```
+
+Without that optional development permission, use **Open system gesture
+settings** and select **None** manually. This affects only the double-press
+shortcut; it does not intercept a single press, long press, emergency gesture,
+or another system-owned Power-key action. Reinstalling the app revokes the adb
+grant.
+
 ### Why an AccessibilityService is not used on Pixel
 
 An accessibility service can request key-event filtering, but that does not
@@ -85,6 +102,11 @@ notifications. The app does not request dismissal of the keyguard, does not
 turn the screen on by itself, and does not weaken the device PIN, pattern,
 password, or biometric security. Leaving turn-off mode removes this permission
 before returning to the app's controls.
+
+Turn Off also moves its existing task back to the foreground if another
+ordinary app takes focus while turn-off mode is active. This keeps the black
+screen above normal application windows without creating a draw-over-other-apps
+overlay or requesting broad overlay access.
 
 This behavior is best-effort. Android may still show trusted system surfaces,
 including Always-on display, emergency UI, the power menu, permission dialogs,
