@@ -23,12 +23,15 @@ import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class MainActivity extends Activity {
     private static final long UNLOCK_TIMEOUT_MILLIS = 10_000;
     private static final String WRITE_SECURE_SETTINGS = "android.permission.WRITE_SECURE_SETTINGS";
     private static final String POWER_GESTURE_SETTING = "camera_double_tap_power_gesture_disabled";
+    private static final String WIRELESS_EMERGENCY_ALERTS_SETTINGS =
+            "android.settings.WIRELESS_EMERGENCY_ALERTS";
     private static final String PREFS = "turn_off_state";
     private static final String PREF_POWER_GESTURE_SAVED = "power_gesture_saved";
     private static final String PREF_POWER_GESTURE_PREVIOUS = "power_gesture_previous";
@@ -149,6 +152,11 @@ public final class MainActivity extends Activity {
                 startActivity(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
         content.addView(displaySettings, matchWrap());
 
+        Button emergencyAlertSettings = new Button(this);
+        emergencyAlertSettings.setText(R.string.open_emergency_alert_settings);
+        emergencyAlertSettings.setOnClickListener(view -> openEmergencyAlertSettings());
+        content.addView(emergencyAlertSettings, matchWrap());
+
         Button gestureSettings = new Button(this);
         gestureSettings.setText(R.string.open_gesture_settings);
         gestureSettings.setOnClickListener(view -> openGestureSettings());
@@ -168,18 +176,40 @@ public final class MainActivity extends Activity {
         activateParams.topMargin = dp(24);
         content.addView(activate, activateParams);
 
-        setContentView(content);
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.addView(content);
+        setContentView(scrollView);
         updateDndStatus();
         updatePowerGestureStatus();
     }
 
     private void confirmAndEnterFakeOff() {
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.power_button_warning_title)
-                .setMessage(R.string.activation_warning_message)
+        boolean notificationAccessGranted = notificationManager.isNotificationPolicyAccessGranted();
+        StringBuilder warning = new StringBuilder();
+        if (!notificationAccessGranted) {
+            warning.append(getString(R.string.activation_warning_dnd_missing)).append("\n\n");
+        }
+        if (!canWriteSecureSettings()) {
+            warning.append(getString(R.string.activation_warning_secure_settings_missing))
+                    .append("\n\n");
+        }
+        warning.append(getString(R.string.activation_warning_emergency_alerts));
+        warning.append("\n\n").append(getString(R.string.activation_warning_system_limits));
+
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.activation_warning_title)
+                .setMessage(warning.toString())
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.continue_action, (dialog, which) -> enterFakeOff())
-                .show();
+                .setPositiveButton(R.string.continue_anyway, (ignored, which) -> enterFakeOff());
+        if (!notificationAccessGranted) {
+            dialog.setNeutralButton(R.string.grant_dnd, (ignored, which) ->
+                    startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
+        } else {
+            dialog.setNeutralButton(R.string.review_emergency_alerts, (ignored, which) ->
+                    openEmergencyAlertSettings());
+        }
+        dialog.show();
     }
 
     private void enterFakeOff() {
@@ -351,6 +381,14 @@ public final class MainActivity extends Activity {
             gestureSettings = new Intent(Settings.ACTION_SETTINGS);
         }
         startActivity(gestureSettings);
+    }
+
+    private void openEmergencyAlertSettings() {
+        Intent emergencyAlertSettings = new Intent(WIRELESS_EMERGENCY_ALERTS_SETTINGS);
+        if (emergencyAlertSettings.resolveActivity(getPackageManager()) == null) {
+            emergencyAlertSettings = new Intent(Settings.ACTION_SETTINGS);
+        }
+        startActivity(emergencyAlertSettings);
     }
 
     private void restoreSoundPolicy() {
