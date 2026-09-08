@@ -1,12 +1,15 @@
 # Turn Off
 
-Turn Off is a small Android app that presents a black, minimum-brightness,
-immersive screen and consumes touches and key events delivered to its activity.
+Turn Off is a small Android app that presents a pure-black, zero-window-brightness,
+game-style immersive screen and consumes touches and key events delivered to its
+activity. The immersive window hides the status bar, navigation controls, and
+large-screen taskbar while turn-off mode is active, and disables Android's
+system-bar contrast scrims so no lighter bar background remains.
 It locks the activity to its current orientation so Android does not offer a
-rotation-suggestion button, and requests Android lock task mode when activated.
-On an ordinary personal phone, Android presents this as user-confirmed screen
-pinning; accepting the prompt keeps the app in front and prevents opening the
-notification shade until pinning is ended.
+rotation-suggestion button and always requests Android lock task mode when
+activated. Ordinary installations use Android's user-confirmed screen pinning;
+a managed device-owner installation enters kiosk mode without that prompt when
+the package has been allowlisted.
 It can optionally enable Android's **Do Not Disturb** mode while active. To exit,
 tap the black screen three times and then press **Volume Down** three times, all
 within ten seconds. Input is evaluated in a moving ten-second window. The six
@@ -33,17 +36,26 @@ This is a visual simulation, not a real powered-off state:
 - Android does not allow an ordinary app to intercept or disable the power
   button. A short press can lock or wake the physical display, and a long press
   can open the system power or emergency UI. The app receives neither press as
-  a normal `KeyEvent`, so `dispatchKeyEvent` cannot consume it. Turn Off now
-  displays this limitation in a confirmation dialog before activation rather
-  than implying that every hardware button can be blocked.
-- Without accepting Android's screen-pinning prompt, system gestures,
+  a normal `KeyEvent`, so `dispatchKeyEvent` cannot consume it. Turn Off keeps
+  this system safety control available rather than implying that every hardware
+  button can be blocked.
+- If the user does not accept Android's screen-pinning prompt, system gestures,
   notification shade access, OEM overlays, and incoming system UI may remain
-  available. Immersive mode by itself only hides system bars temporarily.
-- Screen pinning is Android-owned and deliberately retains a system escape
-  gesture. A device-owner deployment can allowlist Turn Off for stronger lock
-  task (kiosk) mode, but a normal app cannot silently grant itself that role.
-- The display remains on at minimum brightness so the app can detect the unlock
-  taps. Turning the physical display off would make those taps unavailable.
+  available. Immersive mode hides system bars but cannot apply kiosk restrictions.
+- Turn Off starts managed lock task mode when a device-owner administrator has
+  already allowlisted the package. This kiosk mode can restrict Home,
+  Recents, and the notification shade without a pinning prompt. A normal app
+  cannot silently grant itself that role.
+- On a personal device, every activation requests Android's user-confirmed
+  screen-pinning mode. It keeps Turn Off in front more strongly than immersive
+  mode, but Android shows its confirmation UI and deliberately retains the
+  system unpin action.
+- The panel remains logically on at a zero per-window backlight override so the
+  app can detect the unlock taps. On OLED screens the pure-black content turns
+  the pixels off; LCD hardware may retain a faint backlight because Android does
+  not let an ordinary foreground app physically power off the display while it
+  continues receiving touches. Turning the physical display off would make
+  those taps unavailable.
 - Do Not Disturb requires the user to explicitly grant Notification Policy
   access. While turn-off mode is active, the app uses that access to silence
   notifications from other apps and suppress their visual effects, including

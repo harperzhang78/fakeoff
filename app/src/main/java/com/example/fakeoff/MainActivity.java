@@ -117,6 +117,7 @@ public final class MainActivity extends Activity {
         restorePowerGesture();
         unlockSequence.reset();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         WindowManager.LayoutParams attributes = getWindow().getAttributes();
         attributes.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
         getWindow().setAttributes(attributes);
@@ -222,15 +223,19 @@ public final class MainActivity extends Activity {
         blackScreen.requestFocus();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Match game-style full screen at the window level as well as through
+        // immersive mode. This keeps the status bar, navigation bar, and the
+        // large-screen taskbar out of the black surface.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         applyMinimumBrightness();
         applyImmersiveMode();
         startAppPinning();
     }
 
     private void startAppPinning() {
-        // Device-owner installations enter full lock task mode. Ordinary installs
-        // use Android's user-confirmed screen pinning, which also blocks the shade
-        // while it is active. Android intentionally keeps an escape gesture.
+        // Always request lock task when off mode starts. An ordinary installation
+        // uses Android's user-confirmed screen pinning; a device-owner allowlisted
+        // installation enters managed kiosk mode without the pinning prompt.
         try {
             startLockTask();
             lockTaskRequested = true;
@@ -411,7 +416,8 @@ public final class MainActivity extends Activity {
         Window window = getWindow();
         View decorView = window.getDecorView();
         decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_FULLSCREEN
+                View.SYSTEM_UI_FLAG_LOW_PROFILE
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -430,7 +436,11 @@ public final class MainActivity extends Activity {
 
     private void applyMinimumBrightness() {
         WindowManager.LayoutParams attributes = getWindow().getAttributes();
-        attributes.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_OFF;
+        // Android does not permit an app that is still receiving touch input to
+        // physically power down the panel. Zero is the lowest per-window
+        // backlight override; together with the solid black surface it also
+        // turns OLED pixels fully black.
+        attributes.screenBrightness = 0.0f;
         getWindow().setAttributes(attributes);
     }
 
@@ -439,6 +449,7 @@ public final class MainActivity extends Activity {
         window.setNavigationBarColor(Color.BLACK);
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             window.setNavigationBarContrastEnforced(false);
+            window.setStatusBarContrastEnforced(false);
         }
 
         View decorView = window.getDecorView();
