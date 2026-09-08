@@ -13,5 +13,4 @@
     <string name="power_gesture_status_off">Double-press Power control: unavailable; set it to None manually, or grant secure-settings access with adb</string>
     <string name="open_gesture_settings">Open system gesture settings</string>
     <string name="activate">Activate turn-off mode</string>
-    <string name="activate_pinned">Activate with screen pinning</string>
 </resources>
