@@ -1,7 +1,6 @@
 package com.example.fakeoff;
 
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.NotificationManager;
 import android.app.NotificationManager.Policy;
 import android.content.Context;
@@ -41,7 +40,6 @@ public final class MainActivity extends Activity {
     private boolean changedInterruptionFilter;
     private boolean changedNotificationPolicy;
     private boolean fakeOff;
-    private boolean lockTaskRequested;
     private TextView dndStatus;
     private TextView powerGestureStatus;
     private final Runnable restoreImmersiveMode = () -> {
@@ -70,46 +68,15 @@ public final class MainActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        keepFakeOffInFront();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        keepFakeOffInFront();
-    }
-
-    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (!hasFocus) {
-            keepFakeOffInFront();
-        } else if (fakeOff) {
+        if (hasFocus && fakeOff) {
             applyMinimumBrightness();
             applyImmersiveMode();
         }
     }
 
-    private void keepFakeOffInFront() {
-        if (!fakeOff || isFinishing() || isDestroyed()) {
-            return;
-        }
-        ActivityManager activityManager =
-                (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        if (activityManager != null) {
-            getWindow().getDecorView().postDelayed(() -> {
-                if (fakeOff && !isFinishing() && !isDestroyed()) {
-                    activityManager.moveTaskToFront(getTaskId(), 0);
-                    applyImmersiveMode();
-                }
-            }, 100);
-        }
-    }
-
     private void showHome() {
-        stopAppPinning();
         fakeOff = false;
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         setShowOverLockScreen(false);
@@ -224,37 +191,6 @@ public final class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         applyMinimumBrightness();
         applyImmersiveMode();
-        startAppPinning();
-    }
-
-    private void startAppPinning() {
-        // Device-owner installations enter full lock task mode. Ordinary installs
-        // use Android's user-confirmed screen pinning, which also blocks the shade
-        // while it is active. Android intentionally keeps an escape gesture.
-        try {
-            startLockTask();
-            lockTaskRequested = true;
-        } catch (IllegalArgumentException | SecurityException ignored) {
-            lockTaskRequested = false;
-        }
-    }
-
-    private void stopAppPinning() {
-        if (!lockTaskRequested) {
-            return;
-        }
-        ActivityManager activityManager =
-                (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        if (activityManager != null
-                && activityManager.getLockTaskModeState()
-                != ActivityManager.LOCK_TASK_MODE_NONE) {
-            try {
-                stopLockTask();
-            } catch (IllegalArgumentException | SecurityException ignored) {
-                // The system may already have ended pinning with its escape gesture.
-            }
-        }
-        lockTaskRequested = false;
     }
 
     private void setShowOverLockScreen(boolean enabled) {
@@ -301,7 +237,6 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        stopAppPinning();
         restoreSoundPolicy();
         restorePowerGesture();
         super.onDestroy();
