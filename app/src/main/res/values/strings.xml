@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Turn Off</string>
     <string name="title">Turn Off</string>
-    <string name="description">Shows a completely black, silent, touch-blocking screen above other apps and the lock screen. Android will ask to pin the app so the notification shade cannot be pulled down. To leave it, tap 3 times, then press Volume Down 3 times within 10 seconds.</string>
+    <string name="description">Shows a completely black, minimum-brightness screen and silences notifications with Do Not Disturb. It does not use app pinning. To leave it, tap 3 times, then press Volume Down 3 times within 10 seconds.</string>
     <string name="android_limit">Pixel and Android reserve the real power button. Accessibility key filtering does not receive it, so this app cannot disable that safety control.</string>
     <string name="dnd_status_on">Do Not Disturb access: allowed (notifications will be hidden while off)</string>
     <string name="dnd_status_off">Do Not Disturb access: not allowed (notifications cannot be hidden)</string>
