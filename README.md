@@ -6,10 +6,10 @@ activity. The immersive window hides the status bar, navigation controls, and
 large-screen taskbar while turn-off mode is active, and disables Android's
 system-bar contrast scrims so no lighter bar background remains.
 It locks the activity to its current orientation so Android does not offer a
-rotation-suggestion button, and requests Android lock task mode when activated.
-On an ordinary personal phone, Android presents this as user-confirmed screen
-pinning; accepting the prompt keeps the app in front and prevents opening the
-notification shade until pinning is ended.
+rotation-suggestion button. A managed device-owner installation can also enter
+lock task (kiosk) mode when the package has been allowlisted. Ordinary installs
+do not request screen pinning, avoiding Android's confirmation dialog on every
+activation.
 It can optionally enable Android's **Do Not Disturb** mode while active. To exit,
 tap the black screen three times and then press **Volume Down** three times, all
 within ten seconds. Input is evaluated in a moving ten-second window. The six
@@ -36,15 +36,16 @@ This is a visual simulation, not a real powered-off state:
 - Android does not allow an ordinary app to intercept or disable the power
   button. A short press can lock or wake the physical display, and a long press
   can open the system power or emergency UI. The app receives neither press as
-  a normal `KeyEvent`, so `dispatchKeyEvent` cannot consume it. Turn Off now
-  displays this limitation in a confirmation dialog before activation rather
-  than implying that every hardware button can be blocked.
-- Without accepting Android's screen-pinning prompt, system gestures,
-  notification shade access, OEM overlays, and incoming system UI may remain
-  available. Immersive mode by itself only hides system bars temporarily.
-- Screen pinning is Android-owned and deliberately retains a system escape
-  gesture. A device-owner deployment can allowlist Turn Off for stronger lock
-  task (kiosk) mode, but a normal app cannot silently grant itself that role.
+  a normal `KeyEvent`, so `dispatchKeyEvent` cannot consume it. Turn Off keeps
+  this system safety control available rather than implying that every hardware
+  button can be blocked.
+- On an ordinary installation, system gestures, notification shade access, OEM
+  overlays, and incoming system UI may remain available. Immersive mode hides
+  system bars but cannot apply kiosk restrictions.
+- Turn Off starts lock task mode only when a device-owner administrator has
+  already allowlisted the package. A normal app cannot silently grant itself
+  that role; calling Android's screen-pinning fallback instead would show a
+  confirmation dialog and deliberately retain a system escape gesture.
 - The panel remains logically on at a zero per-window backlight override so the
   app can detect the unlock taps. On OLED screens the pure-black content turns
   the pixels off; LCD hardware may retain a faint backlight because Android does

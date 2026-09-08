@@ -2,6 +2,7 @@ package com.example.fakeoff;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.admin.DevicePolicyManager;
 import android.app.NotificationManager;
 import android.app.NotificationManager.Policy;
 import android.content.Context;
@@ -233,9 +234,17 @@ public final class MainActivity extends Activity {
     }
 
     private void startAppPinning() {
-        // Device-owner installations enter full lock task mode. Ordinary installs
-        // use Android's user-confirmed screen pinning, which also blocks the shade
-        // while it is active. Android intentionally keeps an escape gesture.
+        // Calling startLockTask() from an ordinary app always asks the user to
+        // confirm screen pinning. Only call it when a device owner has already
+        // allowlisted this package, where Android can enter kiosk mode without
+        // showing that confirmation dialog.
+        DevicePolicyManager devicePolicyManager =
+                (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+        if (devicePolicyManager == null
+                || !devicePolicyManager.isLockTaskPermitted(getPackageName())) {
+            lockTaskRequested = false;
+            return;
+        }
         try {
             startLockTask();
             lockTaskRequested = true;
