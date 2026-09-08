@@ -1,7 +1,10 @@
 # Turn Off
 
-Turn Off is a small Android app that presents a black, minimum-brightness,
-immersive screen and consumes touches and key events delivered to its activity.
+Turn Off is a small Android app that presents a pure-black, zero-window-brightness,
+game-style immersive screen and consumes touches and key events delivered to its
+activity. The immersive window hides the status bar, navigation controls, and
+large-screen taskbar while turn-off mode is active, and disables Android's
+system-bar contrast scrims so no lighter bar background remains.
 It locks the activity to its current orientation so Android does not offer a
 rotation-suggestion button, and requests Android lock task mode when activated.
 On an ordinary personal phone, Android presents this as user-confirmed screen
@@ -42,8 +45,12 @@ This is a visual simulation, not a real powered-off state:
 - Screen pinning is Android-owned and deliberately retains a system escape
   gesture. A device-owner deployment can allowlist Turn Off for stronger lock
   task (kiosk) mode, but a normal app cannot silently grant itself that role.
-- The display remains on at minimum brightness so the app can detect the unlock
-  taps. Turning the physical display off would make those taps unavailable.
+- The panel remains logically on at a zero per-window backlight override so the
+  app can detect the unlock taps. On OLED screens the pure-black content turns
+  the pixels off; LCD hardware may retain a faint backlight because Android does
+  not let an ordinary foreground app physically power off the display while it
+  continues receiving touches. Turning the physical display off would make
+  those taps unavailable.
 - Do Not Disturb requires the user to explicitly grant Notification Policy
   access. While turn-off mode is active, the app uses that access to silence
   notifications from other apps and suppress their visual effects, including
