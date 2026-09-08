@@ -179,11 +179,18 @@ public final class MainActivity extends Activity {
         activate.setBackgroundTintList(null);
         activate.setBackgroundResource(R.drawable.activate_button_background);
         activate.setElevation(dp(8));
-        activate.setOnClickListener(view -> enterFakeOff());
+        activate.setOnClickListener(view -> enterFakeOff(false));
         LinearLayout.LayoutParams activateParams =
                 new LinearLayout.LayoutParams(dp(200), dp(200));
         activateParams.topMargin = dp(24);
         content.addView(activate, activateParams);
+
+        Button activatePinned = new Button(this);
+        activatePinned.setText(R.string.activate_pinned);
+        activatePinned.setOnClickListener(view -> enterFakeOff(true));
+        LinearLayout.LayoutParams pinnedParams = matchWrap();
+        pinnedParams.topMargin = dp(16);
+        content.addView(activatePinned, pinnedParams);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -193,7 +200,7 @@ public final class MainActivity extends Activity {
         updatePowerGestureStatus();
     }
 
-    private void enterFakeOff() {
+    private void enterFakeOff(boolean allowScreenPinning) {
         fakeOff = true;
         // An explicit app orientation prevents Android from offering its rotation
         // suggestion button while the device is in turn-off mode.
@@ -230,18 +237,19 @@ public final class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         applyMinimumBrightness();
         applyImmersiveMode();
-        startAppPinning();
+        startLockTaskMode(allowScreenPinning);
     }
 
-    private void startAppPinning() {
-        // Calling startLockTask() from an ordinary app always asks the user to
-        // confirm screen pinning. Only call it when a device owner has already
-        // allowlisted this package, where Android can enter kiosk mode without
-        // showing that confirmation dialog.
+    private void startLockTaskMode(boolean allowScreenPinning) {
+        // An allowlisted device-owner installation enters kiosk mode without a
+        // prompt. On an ordinary device, call startLockTask() only after the user
+        // explicitly chooses the pinned option because Android owns and displays
+        // the screen-pinning confirmation.
         DevicePolicyManager devicePolicyManager =
                 (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
-        if (devicePolicyManager == null
-                || !devicePolicyManager.isLockTaskPermitted(getPackageName())) {
+        boolean kioskPermitted = devicePolicyManager != null
+                && devicePolicyManager.isLockTaskPermitted(getPackageName());
+        if (!kioskPermitted && !allowScreenPinning) {
             lockTaskRequested = false;
             return;
         }

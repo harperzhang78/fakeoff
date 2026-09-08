@@ -8,8 +8,9 @@ system-bar contrast scrims so no lighter bar background remains.
 It locks the activity to its current orientation so Android does not offer a
 rotation-suggestion button. A managed device-owner installation can also enter
 lock task (kiosk) mode when the package has been allowlisted. Ordinary installs
-do not request screen pinning, avoiding Android's confirmation dialog on every
-activation.
+offer two activation choices: regular immersive mode does not show a system
+prompt, while **Activate with screen pinning** explicitly requests Android's
+user-confirmed pinning mode.
 It can optionally enable Android's **Do Not Disturb** mode while active. To exit,
 tap the black screen three times and then press **Volume Down** three times, all
 within ten seconds. Input is evaluated in a moving ten-second window. The six
@@ -42,10 +43,15 @@ This is a visual simulation, not a real powered-off state:
 - On an ordinary installation, system gestures, notification shade access, OEM
   overlays, and incoming system UI may remain available. Immersive mode hides
   system bars but cannot apply kiosk restrictions.
-- Turn Off starts lock task mode only when a device-owner administrator has
-  already allowlisted the package. A normal app cannot silently grant itself
-  that role; calling Android's screen-pinning fallback instead would show a
-  confirmation dialog and deliberately retain a system escape gesture.
+- Turn Off starts managed lock task mode when a device-owner administrator has
+  already allowlisted the package. This kiosk mode can restrict Home,
+  Recents, and the notification shade without a pinning prompt. A normal app
+  cannot silently grant itself that role.
+- On a personal device, **Activate with screen pinning** calls Android's
+  user-confirmed screen-pinning mode. It keeps Turn Off in front more strongly
+  than immersive mode, but Android shows its confirmation UI and deliberately
+  retains the system unpin action. Use the regular activation button when that
+  prompt is not wanted.
 - The panel remains logically on at a zero per-window backlight override so the
   app can detect the unlock taps. On OLED screens the pure-black content turns
   the pixels off; LCD hardware may retain a faint backlight because Android does
